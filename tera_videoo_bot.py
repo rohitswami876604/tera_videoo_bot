@@ -1,60 +1,39 @@
-import logging
-import requests
+import os
 from telegram import Update
-from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
+from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
+from pytube import YouTube
 
-# Replace with your actual function to get the direct download link from Terabox
-def get_terabox_direct_link(link):
-    # This is a placeholder function. You need to implement this based on Terabox's API or web scraping.
-    # For now, it just returns the same link.
-    return link
+# Replace 'YOUR_TELEGRAM_BOT_TOKEN' with the token you get from BotFather on Telegram
+TOKEN = 'YOUR_TELEGRAM_BOT_TOKEN'
 
 # Command to start the bot
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text('Welcome! Send me a Terabox video link to download.')
+    await update.message.reply_text(
+        "Welcome to the YouTube Downloader Bot!\n"
+        "Send me a YouTube video URL, and I'll download it for you."
+    )
 
-# Handle incoming messages
+# Function to handle YouTube URL messages
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_message = update.message.text
+    message_text = update.message.text
     
-    # Check if the message is a Terabox link (you might want to add more robust checks)
-    if "terabox.com" in user_message:
-        direct_link = get_terabox_direct_link(user_message)
-        
-        if direct_link:
-            await update.message.reply_text(f'Downloading video from: {direct_link}')
-            
+    # Check if the message contains a YouTube URL
+    if "youtube.com" in message_text or "youtu.be" in message_text:
+        await update.message.reply_text("Processing your video... Please wait.")
+        try:
             # Download the video
-            response = requests.get(direct_link)
-            if response.status_code == 200:
-                with open('video.mp4', 'wb') as f:
-                    f.write(response.content)
-                
-                # Send the video back to the user
-                await update.message.reply_video(video=open('video.mp4', 'rb'))
-            else:
-                await update.message.reply_text('Failed to download the video.')
-        else:
-            await update.message.reply_text('Invalid Terabox link.')
+            video_file = download_youtube_video(message_text)
+            
+            # Send the video file to the user
+            with open(video_file, 'rb') as video:
+                await update.message.reply_video(video=video, supports_streaming=True)
+            
+            # Clean up: remove the downloaded file
+            os.remove(video_file)
+            
+            await update.message.reply_text("Video sent successfully!")
+            
+        except Exception as e:
+            await update.message.reply_text(f"An error occurred: {str(e)}")
     else:
-        await update.message.reply_text('Please send a valid Terabox video link.')
-
-# Set up logging
-logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO
-)
-
-# Main function to run the bot
-if __name__ == '__main__':
-    application = ApplicationBuilder().token('7629704240:AAHHyFuVPBtf247hFDnRrYZp9yHb7FuUT5U').build()
-    
-    # Add handlers
-    start_handler = CommandHandler('start', start)
-    message_handler = MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message)
-    
-    application.add_handler(start_handler)
-    application.add_handler(message_handler)
-    
-    # Run the bot
-    application.run_polling()
+        await
